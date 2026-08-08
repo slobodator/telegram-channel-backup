@@ -13,7 +13,7 @@ let cachedCredentials; // module scope: survives warm Lambda invocations
 
 async function fetchSecret(secretId) {
     const smClient = new SecretsManagerClient({
-        region: process.env.AWS_REGION
+        region: String(process.env.AWS_REGION)
     });
 
     const res = await smClient.send(

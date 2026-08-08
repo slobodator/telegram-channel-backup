@@ -8,7 +8,7 @@ import { TelegramClient } from "teleproto";
 import { StringSession } from "teleproto/sessions/index.js";
 
 const apiId = Number(process.env.TELEGRAM_API_ID);
-const apiHash = process.env.TELEGRAM_API_HASH;
+const apiHash = String(process.env.TELEGRAM_API_HASH);
 
 const SESSION_FILE = ".telegram-session";
 

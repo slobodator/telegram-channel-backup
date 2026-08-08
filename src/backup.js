@@ -6,6 +6,30 @@ import {loadState, saveState} from "./state.js";
 
 const channel = process.env.TELEGRAM_CHANNEL;
 
+/*
+ * Telegram attaches many media types that have no file behind them
+ * (polls, geo, dice, games, ...). downloadMedia() throws on those, so we
+ * only hand it the classes it actually knows how to fetch. */
+function isDownloadable(media) {
+    if (!media) {
+        return false;
+    }
+
+    if (media.className === "MessageMediaWebPage") {
+        const webpage = media.webpage;
+        return Boolean(webpage && (webpage.document || webpage.photo));
+    }
+
+    return [
+        "MessageMediaPhoto",
+        "MessageMediaDocument",
+        "MessageMediaContact",
+        "WebDocument",
+        "WebDocumentNoProxy"
+    ].includes(media.className);
+}
+
+
 function getTypeAndMimeType(message) {
     if (message.photo) {
         return ["photo", "image/jpeg"];
@@ -58,6 +82,10 @@ async function backupMessage(client, message) {
     const metadata = {id, date, text};
 
     if (message.media) {
+        if (!isDownloadable(message.media)) {
+            console.log(`  skipping non-downloadable media: ${message.media.className}`);
+            return;
+        }
         try {
             console.log(`  downloading media ${id}...`);
             const buffer = await client.downloadMedia(message, {});
@@ -70,6 +98,7 @@ async function backupMessage(client, message) {
             }
         } catch (error) {
             console.error(`  media download failed for ${id}`, error.message);
+            throw error;
         }
     }
 
