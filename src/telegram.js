@@ -2,8 +2,9 @@ import "dotenv/config";
 
 import fs from "node:fs/promises";
 
-import { TelegramClient } from "telegram";
-import { StringSession } from "telegram/sessions/index.js";
+import { TelegramClient } from "teleproto";
+// noinspection JSFileReferences
+import { StringSession } from "teleproto/sessions/index.js";
 
 const apiId = Number(process.env.TELEGRAM_API_ID);
 const apiHash = process.env.TELEGRAM_API_HASH;

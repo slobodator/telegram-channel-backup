@@ -1,39 +1,31 @@
 import "dotenv/config";
 
-import { createTelegramClient } from "./telegram.js";
-/*import {
-    uploadBuffer,
-    uploadJson
-} from "./s3.js";*/
-
-/*import {
-    loadState,
-    saveState
-} from "./state.js";*/
+import {createTelegramClient} from "./telegram.js";
+import {uploadBuffer, uploadJson, uploadText} from "./s3.js";
+import {loadState, saveState} from "./state.js";
 
 const channel = process.env.TELEGRAM_CHANNEL;
 
-function getMimeType(message) {
+function getTypeAndMimeType(message) {
     if (message.photo) {
-        return "image/jpeg";
+        return ["photo", "image/jpeg"];
     }
 
     if (message.video) {
-        return message.video.mimeType || "video/mp4";
+        return ["video", message.video.mimeType || "video/mp4"];
     }
 
     if (message.document) {
-        return message.document.mimeType ||
-            "application/octet-stream";
+        return ["document", message.document.mimeType || "application/octet-stream"];
     }
 
     if (message.audio) {
-        return message.audio.mimeType ||
-            "audio/mpeg";
+        return ["audio", message.audio.mimeType || "audio/mpeg"];
     }
 
-    return "application/octet-stream";
+    return ["binary", "application/octet-stream"];
 }
+
 
 function getExtension(mimeType) {
     const map = {
@@ -48,210 +40,93 @@ function getExtension(mimeType) {
     return map[mimeType] || "bin";
 }
 
-async function backupMessage(
-    client,
-    message
-) {
+async function backupMessage(client, message) {
     const id = Number(message.id);
 
-    console.log(
-        `Processing message ${id}`
-    );
-    console.log(
-        `  message : ${message.message}`
-    );
+    console.log(`Processing message ${id}`);
 
-    const metadata = {
-        id,
+    const date = new Date(message.date * 1000);
 
-        date: message.date
-            ? new Date(
-                message.date * 1000
-            ).toISOString()
-            : null,
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    const key = `${date.getUTCFullYear()}/${month}/${day}/${hours}-${minutes}`;
 
-        message: message.message || null,
+    const text = message.message || null;
 
-        groupedId: message.groupedId
-            ? message.groupedId.toString()
-            : null,
+    const metadata = {id, date, text};
 
-        views: message.views ?? null,
-
-        forwards: message.forwards ?? null,
-
-        replyTo: message.replyTo
-            ? {
-                replyToMsgId:
-                    message.replyTo.replyToMsgId ?? null
-            }
-            : null
-    };
-
-    /*
-     * Media
-     */
-
-/*
     if (message.media) {
-
         try {
-
-            console.log(
-                `  downloading media...`
-            );
-
-            const buffer =
-                await client.downloadMedia(
-                    message,
-                    {}
-                );
-
+            console.log(`  downloading media ${id}...`);
+            const buffer = await client.downloadMedia(message, {});
             if (buffer) {
-
-                const mimeType =
-                    getMimeType(message);
-
-                const extension =
-                    getExtension(mimeType);
-
-                const mediaKey =
-                    `media/${id}.${extension}`;
-
-                const savedKey =
-                    await uploadBuffer(
-                        mediaKey,
-                        buffer,
-                        mimeType
-                    );
-
-                metadata.media = {
-                    key: savedKey,
-                    contentType: mimeType,
-                    size: buffer.length
-                };
-
-                console.log(
-                    `  media uploaded: ${savedKey}`
-                );
+                const [type, mimeType] = getTypeAndMimeType(message);
+                const extension = getExtension(mimeType);
+                const mediaKey = `${key}/${type}${id}.${extension}`;
+                const savedKey = await uploadBuffer(mediaKey, buffer, mimeType);
+                console.log(`  media uploaded: ${savedKey}`);
             }
-
         } catch (error) {
-
-            console.error(
-                `  media download failed for ${id}`,
-                error
-            );
-
-            metadata.mediaError =
-                error.message;
+            console.error(`  media download failed for ${id}`, error.message);
         }
     }
-*/
 
-    /*
-     * Save message JSON
-     */
-
-    const messageKey =
-        `messages/${id}.json`;
-
-/*    await uploadJson(
-        messageKey,
-        metadata
-    );*/
-
-
-    console.log(
-        `  message uploaded: ${messageKey}`
-    );
+    if (text) {
+        await uploadText(`${key}/text${id}.txt`, text);
+        await uploadJson(`${key}/metadata${id}.json`, metadata);
+        console.log(`  message uploaded: ${id}`);
+    }
 }
 
 async function main() {
-
-    const client =
-        await createTelegramClient();
+    const client = await createTelegramClient();
 
     try {
-
-/*        const state =
-            await loadState();
-
-        const lastMessageId =
-            Number(state.lastMessageId || 0);
-
-        console.log(
-            `Last backed up message: ${lastMessageId}`
-        );*/
-
-        console.log(
-            `Channel: ${channel}`
-        );
+        console.log(`Channel: ${channel}`);
+        const state = await loadState();
+        const lastMessageId = Number(state.lastMessageId || 0);
+        console.log(`Last backed up message: ${lastMessageId}`);
 
         /*
          * Important:
-         *
-         * Telegram returns history
-         * from newest to oldest.
-         *
-         * We use minId so we only
-         * process messages newer
-         * than our checkpoint.
-         */
+         * Telegram returns history from newest to oldest.
+         * We use minId so we only process messages newer than our checkpoint. */
 
-/*        let maxProcessedId =
-            lastMessageId;*/
+        let maxProcessedId = lastMessageId;
+        let i = 0
+        let MAX_PROCESSED = 10;
 
         for await (
             const message
             of client.iterMessages(
-                channel,
-                {
-                    minId: 0, //lastMessageId,
-                    reverse: true
-                }
-            )
-        ) {
+            channel,
+            {
+                minId: lastMessageId,
+                reverse: true
+            }
+        )
+            ) {
+            if (i++ > MAX_PROCESSED) break;
 
-            await backupMessage(
-                client,
-                message
-            );
+            await backupMessage(client, message);
 
-            const id =
-                Number(message.id);
-/*
-            if (id > maxProcessedId) {
-                maxProcessedId = id;
-            }*/
-
- /*           await saveState(
-                maxProcessedId
-            );
-*/
+            const id = Number(message.id);
+            if (id > maxProcessedId) maxProcessedId = id;
+            await saveState(maxProcessedId);
         }
 
         console.log("");
-        console.log(
-            "Backup completed."
-        );
-
-        console.log(
-            `Last message: ${maxProcessedId}`
-        );
-
+        console.log(`Backup completed. Last message: ${maxProcessedId}`);
     } finally {
-
         await client.disconnect();
     }
 }
 
-main().catch(error => {
-
-    console.error(
-        "Backup failed:",
-        error
-    );
-
-    process.exit(1);
-});
+main().catch(
+    error => {
+        console.error("Backup failed:", error);
+        process.exit(1);
+    }
+);
