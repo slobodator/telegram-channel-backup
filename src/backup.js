@@ -5,6 +5,7 @@ import {uploadBuffer, uploadJson} from "./s3.js";
 import {loadState, saveState} from "./state.js";
 import {requireNonNull} from "./util.js";
 import prettyBytes from "pretty-bytes"
+
 const channel = requireNonNull(process.env.TELEGRAM_CHANNEL, 'telegram channel');
 const batchSize = process.env.BATCH_SIZE || 10;
 
@@ -90,7 +91,7 @@ async function backupMessage(client, message) {
         }
         try {
             const size = Number(message.file.size)
-            console.log(`  downloading ${prettyBytes(size)} media ${id}...`);
+            console.log(`  downloading media ${id} of size ${prettyBytes(size)} ...`);
             const buffer = await client.downloadMedia(message, {});
             if (buffer) {
                 const [type, mimeType] = getTypeAndMimeType(message);
@@ -138,7 +139,7 @@ export async function main() {
             }
         )
             ) {
-            if (i++ > batchSize) break;
+            if (++i > batchSize) break;
 
             await backupMessage(client, message);
 

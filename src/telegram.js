@@ -5,10 +5,9 @@ import fs from "node:fs/promises";
 import {TelegramClient} from "teleproto";
 // noinspection JSFileReferences
 import {StringSession} from "teleproto/sessions/index.js";
-import {GetParameterCommand, SSMClient} from "@aws-sdk/client-ssm";
 import {requireNonNull} from "./util.js";
+import {fetchParameter} from "./parameterStore.js";
 
-const region = String(requireNonNull(process.env.AWS_REGION, 'AWS region'));
 const parameterName = process.env.TELEGRAM_PARAMETER_NAME;
 const SESSION_FILE = ".telegram-session";
 
@@ -16,30 +15,6 @@ const apiId = process.env.TELEGRAM_API_ID;
 const apiHash = process.env.TELEGRAM_API_HASH;
 
 let cachedCredentials; // module scope: survives warm Lambda invocations
-
-async function fetchParameter(parameterName) {
-    const ssmClient = new SSMClient({
-        region: region
-    });
-
-    const res = await ssmClient.send(
-        new GetParameterCommand({
-                Name: parameterName,
-                WithDecryption: true
-            }
-        )
-    );
-
-    const value = requireNonNull(res.Parameter?.Value, 'telegram credentials');
-
-    if (!value) {
-        throw new Error(
-            `Telegram parameter ${parameterName} is empty`
-        );
-    }
-
-    return JSON.parse(value);
-}
 
 async function loadCredentials() {
     if (cachedCredentials) return cachedCredentials;
