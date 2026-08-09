@@ -46,7 +46,7 @@ S3_SECRET_ACCESS_KEY=minioadmin
 
 ### Parameter Store
 
-Put
+#### `telegramCredentials`
 
 ```json
 {
@@ -56,14 +56,24 @@ Put
 }
 ```
 
-to the `telegramCredentials` parameter
+#### `s3Credentials`
+
+```json
+{
+  "accessKeyId": "<put your value here>",
+  "secretAccessKey": "<put your value here>",
+  "s3Endpoint": "<put your value here>",
+  "region": "<put your value here>"
+}
+```
 
 ### Lambda env variables
 
 #### mandatory
 
-- `TELEGRAM_PARAMETER_NAME` = `telegramCredentials`
 - `TELEGRAM_CHANNEL` -- starting with `-100`
+- `TELEGRAM_PARAMETER_NAME` = `telegramCredentials`
+- `S3_PARAMETER_NAME` = `s3Credentials`
 - `S3_BUCKET` -- bucket name
 - `S3_PREFIX` -- root directory
 
