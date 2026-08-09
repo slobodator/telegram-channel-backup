@@ -5,50 +5,57 @@ import fs from "node:fs/promises";
 import {TelegramClient} from "teleproto";
 // noinspection JSFileReferences
 import {StringSession} from "teleproto/sessions/index.js";
-import {GetSecretValueCommand, SecretsManagerClient} from "@aws-sdk/client-secrets-manager";
+import {GetParameterCommand, SSMClient} from "@aws-sdk/client-ssm";
+import {requireNonNull} from "./util.js";
 
+const region = String(requireNonNull(process.env.AWS_REGION, 'AWS region'));
+const parameterName = process.env.TELEGRAM_PARAMETER_NAME;
 const SESSION_FILE = ".telegram-session";
+
+const apiId = process.env.TELEGRAM_API_ID;
+const apiHash = process.env.TELEGRAM_API_HASH;
 
 let cachedCredentials; // module scope: survives warm Lambda invocations
 
-async function fetchSecret(secretId) {
-    const smClient = new SecretsManagerClient({
-        region: String(process.env.AWS_REGION)
+async function fetchParameter(parameterName) {
+    const ssmClient = new SSMClient({
+        region: region
     });
 
-    const res = await smClient.send(
-        new GetSecretValueCommand({
-                SecretId: secretId
+    const res = await ssmClient.send(
+        new GetParameterCommand({
+                Name: parameterName,
+                WithDecryption: true
             }
         )
     );
 
-    if (!res.SecretString) {
+    const value = requireNonNull(res.Parameter?.Value, 'telegram credentials');
+
+    if (!value) {
         throw new Error(
-            `Telegram secret ${secretId} is empty or binary`
+            `Telegram parameter ${parameterName} is empty`
         );
     }
 
-    return JSON.parse(res.SecretString);
+    return JSON.parse(value);
 }
 
 async function loadCredentials() {
     if (cachedCredentials) return cachedCredentials;
 
-    const secretId = process.env.TELEGRAM_SECRET_ID;
-
-    const credentials = secretId
-        ? await fetchSecret(secretId)
+    const credentials = parameterName
+        ? await fetchParameter(parameterName)
         : {
             // Local dev only: credentials from .env and the on-disk session
-            apiId: Number(process.env.TELEGRAM_API_ID),
-            apiHash: process.env.TELEGRAM_API_HASH,
+            apiId: Number(requireNonNull(apiId, 'telegram apiId')),
+            apiHash: requireNonNull(apiHash, 'telegram apiHash'),
             session: await fs.readFile(SESSION_FILE, "utf8")
         };
 
-    const source = secretId
-        ? `secret ${secretId}`
-        : ".env / " + SESSION_FILE;
+    const source = parameterName
+        ? `parameter ${parameterName}`
+        : ".env";
 
     for (const key of ["apiId", "apiHash", "session"]) {
         if (!credentials[key]) {

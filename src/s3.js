@@ -37,14 +37,3 @@ export async function uploadJson(
         "application/json"
     );
 }
-
-export async function uploadText(
-    key,
-    text
-) {
-    return uploadBuffer(
-        key,
-        text,
-        "text/plain"
-    );
-}

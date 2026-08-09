@@ -1,14 +1,13 @@
 import "dotenv/config";
-
 import fs from "node:fs/promises";
 import input from "input";
-
-import { TelegramClient } from "teleproto";
+import {TelegramClient} from "teleproto";
+import {requireNonNull} from "./util.js";
 // noinspection JSFileReferences
-import { StringSession } from "teleproto/sessions/index.js";
+import {StringSession} from "teleproto/sessions/index.js";
 
-const apiId = Number(process.env.TELEGRAM_API_ID);
-const apiHash = String(process.env.TELEGRAM_API_HASH);
+const apiId = Number(requireNonNull(process.env.TELEGRAM_API_ID, 'telegram apiId'));
+const apiHash = String(requireNonNull(process.env.TELEGRAM_API_HASH, 'telegram apiHash'));
 
 const SESSION_FILE = ".telegram-session";
 
@@ -52,7 +51,7 @@ async function main() {
     await fs.writeFile(
         SESSION_FILE,
         savedSession,
-        { mode: 0o600 }
+        {mode: 0o600}
     );
 
     console.log("");

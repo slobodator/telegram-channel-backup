@@ -1,10 +1,12 @@
 import "dotenv/config";
 
 import {createTelegramClient} from "./telegram.js";
-import {uploadBuffer, uploadJson, uploadText} from "./s3.js";
+import {uploadBuffer, uploadJson} from "./s3.js";
 import {loadState, saveState} from "./state.js";
-
-const channel = process.env.TELEGRAM_CHANNEL;
+import {requireNonNull} from "./util.js";
+import prettyBytes from "pretty-bytes"
+const channel = requireNonNull(process.env.TELEGRAM_CHANNEL, 'telegram channel');
+const batchSize = process.env.BATCH_SIZE || 10;
 
 /*
  * Telegram attaches many media types that have no file behind them
@@ -87,7 +89,8 @@ async function backupMessage(client, message) {
             return;
         }
         try {
-            console.log(`  downloading media ${id}...`);
+            const size = Number(message.file.size)
+            console.log(`  downloading ${prettyBytes(size)} media ${id}...`);
             const buffer = await client.downloadMedia(message, {});
             if (buffer) {
                 const [type, mimeType] = getTypeAndMimeType(message);
@@ -103,13 +106,12 @@ async function backupMessage(client, message) {
     }
 
     if (text) {
-        await uploadText(`${key}/text${id}.txt`, text);
-        await uploadJson(`${key}/metadata${id}.json`, metadata);
+        await uploadJson(`${key}/message${id}.json`, metadata);
         console.log(`  message uploaded: ${id}`);
     }
 }
 
-async function main() {
+export async function main() {
     const client = await createTelegramClient();
 
     try {
@@ -125,7 +127,6 @@ async function main() {
 
         let maxProcessedId = lastMessageId;
         let i = 0
-        let MAX_PROCESSED = 10;
 
         for await (
             const message
@@ -137,7 +138,7 @@ async function main() {
             }
         )
             ) {
-            if (i++ > MAX_PROCESSED) break;
+            if (i++ > batchSize) break;
 
             await backupMessage(client, message);
 
@@ -153,9 +154,16 @@ async function main() {
     }
 }
 
-main().catch(
-    error => {
-        console.error("Backup failed:", error);
-        process.exit(1);
-    }
-);
+/*
+ * Only self-run when invoked directly (npm run backup).
+ * Under Lambda this module is imported by src/lambda.js, which owns
+ * error handling: process.exit() there would kill the container and
+ * hide the failure from retries and the DLQ. */
+if (import.meta.filename === process.argv[1]) {
+    main().catch(
+        error => {
+            console.error("Backup failed:", error);
+            process.exit(1);
+        }
+    );
+}
