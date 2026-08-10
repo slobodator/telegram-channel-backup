@@ -7,8 +7,10 @@
     "backup": "node src/backup.js"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1106.0",
     "@aws-sdk/client-s3": "^3.0.0",
     "@aws-sdk/client-ssm": "^3.1106.0",
+    "@aws-sdk/lib-dynamodb": "^3.1106.0",
     "dotenv": "^17.0.0",
     "input": "^1.0.1",
     "pretty-bytes": "^7.1.1",

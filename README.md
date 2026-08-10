@@ -21,6 +21,24 @@ server /data \
 --console-address ":9001"
 ```
 
+- run local DynamoDB
+```shell
+docker run -d -p 8000:8000 --name dynamodb amazon/dynamodb-local
+```
+- create a table there
+```shell
+aws dynamodb create-table \
+    --table-name telegram-messages \
+    --attribute-definitions \
+        AttributeName=channelId,AttributeType=N \
+        AttributeName=messageId,AttributeType=N \
+    --key-schema \
+        AttributeName=channelId,KeyType=HASH \
+        AttributeName=messageId,KeyType=RANGE \
+    --billing-mode PAY_PER_REQUEST \
+    --endpoint-url http://localhost:8000
+```
+
 - create some bucket there
 - create `.env` file
 
@@ -38,6 +56,8 @@ S3_PREFIX=<put your value here>
 S3_ENDPOINT=http://localhost:9000
 S3_ACCESS_KEY_ID=minioadmin
 S3_SECRET_ACCESS_KEY=minioadmin
+
+DYNAMO_DB_ENDPOINT=http://localhost:8000
 ```
 
 - run `npm run auth`
@@ -76,6 +96,7 @@ S3_SECRET_ACCESS_KEY=minioadmin
 - `S3_PARAMETER_NAME` = `s3Credentials`
 - `S3_BUCKET` -- bucket name
 - `S3_PREFIX` -- root directory
+- `DYNAMO_DB_TABLE_NAME` = `telegram-messages`
 
 #### optional
 

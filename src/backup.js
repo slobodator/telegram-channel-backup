@@ -1,13 +1,30 @@
 import "dotenv/config";
-
+import {DynamoDBClient} from "@aws-sdk/client-dynamodb";
+import {DynamoDBDocumentClient, PutCommand} from "@aws-sdk/lib-dynamodb";
 import {createTelegramClient} from "./telegram.js";
 import {uploadBuffer, uploadJson} from "./s3.js";
 import {loadState, saveState} from "./state.js";
 import {requireNonNull} from "./util.js";
 import prettyBytes from "pretty-bytes"
 
-const channel = requireNonNull(process.env.TELEGRAM_CHANNEL, 'telegram channel');
+const channel = BigInt(requireNonNull(process.env.TELEGRAM_CHANNEL, 'telegram channel'));
 const batchSize = process.env.BATCH_SIZE || 10;
+
+const region = String(requireNonNull(process.env.AWS_REGION, 'AWS region'));
+const tableName = String(requireNonNull(process.env.DYNAMO_DB_TABLE_NAME, 'DynamoDB tableName'));
+const dynamoDbEndpoint = process.env.DYNAMO_DB_ENDPOINT;
+
+const client = new DynamoDBClient(
+    {
+        region: region,
+        ...(dynamoDbEndpoint
+                ? {endpoint: dynamoDbEndpoint}
+                : {}
+        )
+    }
+);
+
+const docClient = DynamoDBDocumentClient.from(client);
 
 /*
  * Telegram attaches many media types that have no file behind them
@@ -84,6 +101,7 @@ async function backupMessage(client, message) {
 
     const metadata = {id, date, text};
 
+    let savedKey
     if (message.media) {
         if (!isDownloadable(message.media)) {
             console.log(`  skipping non-downloadable media: ${message.media.className}`);
@@ -97,8 +115,8 @@ async function backupMessage(client, message) {
                 const [type, mimeType] = getTypeAndMimeType(message);
                 const extension = getExtension(mimeType);
                 const mediaKey = `${key}/${type}${id}.${extension}`;
-                const savedKey = await uploadBuffer(mediaKey, buffer, mimeType);
-                console.log(`  media uploaded: ${savedKey}`);
+                savedKey = await uploadBuffer(mediaKey, buffer, mimeType);
+                console.log(`  media '${savedKey}' uploaded`);
             }
         } catch (error) {
             console.error(`  media download failed for ${id}`, error.message);
@@ -108,8 +126,23 @@ async function backupMessage(client, message) {
 
     if (text) {
         await uploadJson(`${key}/message${id}.json`, metadata);
-        console.log(`  message uploaded: ${id}`);
+        console.log(`  message ${id} uploaded`);
     }
+
+    const command = new PutCommand({
+        TableName: tableName,
+        Item: {
+            channelId: channel,
+            messageId: id,
+            groupedId: message.groupedId ? BigInt(message.groupedId) : null,
+            date: date.toISOString(),
+            text: text,
+            media: savedKey
+        },
+    });
+
+    await docClient.send(command);
+    console.log(`  message ${id} was written to DB`);
 }
 
 export async function main() {
