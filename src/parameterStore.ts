@@ -1,9 +1,12 @@
 import {GetParameterCommand, SSMClient} from "@aws-sdk/client-ssm";
-import {requireNonNull} from "./util.js";
+import {requireNonNull} from "./util.ts";
 
 const region = String(requireNonNull(process.env.AWS_REGION, 'AWS region'));
 
-export async function fetchParameter(parameterName) {
+/* Parameters hold a flat JSON object of credentials, so every value is a string. */
+export type ParameterValue = Record<string, string | undefined>;
+
+export async function fetchParameter(parameterName: string): Promise<ParameterValue> {
     const ssmClient = new SSMClient({
         region: region
     });
@@ -24,5 +27,5 @@ export async function fetchParameter(parameterName) {
         );
     }
 
-    return JSON.parse(value);
+    return JSON.parse(value) as ParameterValue;
 }

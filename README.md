@@ -1,6 +1,30 @@
 # Purpose
 
-Backup the telegram channel to S3. It is an AWS Lambda written with Node.js.
+Backup the telegram channel to S3. It is an AWS Lambda written in TypeScript on Node.js.
+
+# Build
+
+Sources live in `src` (TypeScript, ES modules, Node 26).
+
+There is no compile step: Node runs the `.ts` sources directly by stripping
+types, which is why relative imports carry a `.ts` extension. `tsc` is only a
+type checker, and esbuild only a bundler -- neither emits anything you run
+locally.
+
+```shell
+npm install
+npm run typecheck   # tsc -- the only type check; Node and esbuild do none
+npm run bundle      # esbuild -> build/lambda/index.mjs
+npm run package     # typecheck, bundle and zip for Lambda
+```
+
+`npm run auth` and `npm run backup` execute `src/auth.ts` and `src/backup.ts`
+as they are. Type stripping needs Node 22.18 or newer.
+
+The deployment artifact is a single esbuild bundle: `./package-lambda.sh` writes
+`build/lambda/index.mjs` with every dependency inlined and zips it, so the
+package carries no `node_modules` and no sources. The Lambda handler is
+`index.handler`. See `esbuild.mjs` for the bundle options.
 
 # Prerequisites
 

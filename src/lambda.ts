@@ -1,4 +1,6 @@
-import {main} from "./backup.js";
+import type {Context} from "aws-lambda";
+
+import {main} from "./backup.ts";
 
 /*
  * Lambda entry point. Intended to be driven by an EventBridge schedule,
@@ -7,7 +9,7 @@ import {main} from "./backup.js";
  * Errors are rethrown rather than swallowed: Lambda then marks the
  * invocation failed, which is what drives retries, the DLQ and the
  * Errors metric. */
-export async function handler(event, context) {
+export async function handler(_event: unknown, context: Context): Promise<{ ok: true }> {
     console.log(`Backup started (request ${context?.awsRequestId})`);
 
     try {

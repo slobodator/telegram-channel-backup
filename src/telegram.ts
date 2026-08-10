@@ -3,10 +3,9 @@ import "dotenv/config";
 import fs from "node:fs/promises";
 
 import {TelegramClient} from "teleproto";
-// noinspection JSFileReferences
 import {StringSession} from "teleproto/sessions/index.js";
-import {requireNonNull} from "./util.js";
-import {fetchParameter} from "./parameterStore.js";
+import {requireNonNull} from "./util.ts";
+import {fetchParameter} from "./parameterStore.ts";
 
 const parameterName = process.env.TELEGRAM_PARAMETER_NAME;
 const SESSION_FILE = ".telegram-session";
@@ -14,12 +13,18 @@ const SESSION_FILE = ".telegram-session";
 const apiId = process.env.TELEGRAM_API_ID;
 const apiHash = process.env.TELEGRAM_API_HASH;
 
-let cachedCredentials; // module scope: survives warm Lambda invocations
+interface TelegramCredentials {
+    apiId: number;
+    apiHash: string;
+    session: string;
+}
 
-async function loadCredentials() {
+let cachedCredentials: TelegramCredentials | undefined; // module scope: survives warm Lambda invocations
+
+async function loadCredentials(): Promise<TelegramCredentials> {
     if (cachedCredentials) return cachedCredentials;
 
-    const credentials = parameterName
+    const credentials: Record<string, string | number | undefined> = parameterName
         ? await fetchParameter(parameterName)
         : {
             // Local dev only: credentials from .env and the on-disk session
@@ -49,7 +54,7 @@ async function loadCredentials() {
     return cachedCredentials;
 }
 
-export async function createTelegramClient() {
+export async function createTelegramClient(): Promise<TelegramClient> {
     const {apiId, apiHash, session} = await loadCredentials();
 
     const stringSession = new StringSession(session);

@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "auth": "node src/auth.js",
-    "backup": "node src/backup.js"
+    "typecheck": "tsc",
+    "bundle": "node esbuild.mjs",
+    "package": "./package-lambda.sh",
+    "auth": "node src/auth.ts",
+    "backup": "node src/backup.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1106.0",
@@ -17,6 +20,9 @@
     "teleproto": "^1.228.5"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0"
+    "@types/aws-lambda": "^8.10.162",
+    "@types/node": "^26.2.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
   }
 }

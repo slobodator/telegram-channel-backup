@@ -1,12 +1,12 @@
-import {PutObjectCommand} from "@aws-sdk/client-s3";
+import {PutObjectCommand, type PutObjectCommandInput} from "@aws-sdk/client-s3";
 
-import {bucket, prefix, s3Client} from "./s3-client.js";
+import {bucket, prefix, s3Client} from "./s3-client.ts";
 
 export async function uploadBuffer(
-    key,
-    body,
-    contentType
-) {
+    key: string,
+    body: PutObjectCommandInput["Body"],
+    contentType: string
+): Promise<string> {
     const fullKey = `${prefix}/${key}`;
 
     await s3Client.send(
@@ -22,9 +22,9 @@ export async function uploadBuffer(
 }
 
 export async function uploadJson(
-    key,
-    object
-) {
+    key: string,
+    object: unknown
+): Promise<string> {
     const body = JSON.stringify(
         object,
         null,

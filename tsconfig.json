@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    /* The Lambda runtime is nodejs26.x and the package is an ES module,
+     * so resolve and check against modern Node ESM. */
+    "target": "es2023",
+    "lib": ["es2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+
+    /* Nothing is compiled by tsc: Node runs the .ts sources directly by
+     * stripping types, and esbuild bundles them for Lambda. tsc is only the
+     * type checker, which is why .ts import specifiers are allowed and why
+     * erasableSyntaxOnly matters -- it rejects the constructs (enums,
+     * namespaces, parameter properties) that type stripping cannot handle. */
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts", "types/**/*.d.ts"]
+}

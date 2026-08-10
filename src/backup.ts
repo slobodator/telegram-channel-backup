@@ -1,14 +1,16 @@
 import "dotenv/config";
 import {DynamoDBClient} from "@aws-sdk/client-dynamodb";
 import {DynamoDBDocumentClient, PutCommand} from "@aws-sdk/lib-dynamodb";
-import {createTelegramClient} from "./telegram.js";
-import {uploadBuffer, uploadJson} from "./s3.js";
-import {loadState, saveState} from "./state.js";
-import {requireNonNull} from "./util.js";
+import {Api, TelegramClient} from "teleproto";
+import {createTelegramClient} from "./telegram.ts";
+import {uploadBuffer, uploadJson} from "./s3.ts";
+import {loadState, saveState} from "./state.ts";
+import {requireNonNull} from "./util.ts";
 import prettyBytes from "pretty-bytes"
+import bigInt from "big-integer";
 
-const channel = BigInt(requireNonNull(process.env.TELEGRAM_CHANNEL, 'telegram channel'));
-const batchSize = process.env.BATCH_SIZE || 10;
+const channelId = BigInt(requireNonNull(process.env.TELEGRAM_CHANNEL, 'telegram channelId'));
+const batchSize = Number(process.env.BATCH_SIZE || 10);
 
 const region = String(requireNonNull(process.env.AWS_REGION, 'AWS region'));
 const tableName = String(requireNonNull(process.env.DYNAMO_DB_TABLE_NAME, 'DynamoDB tableName'));
@@ -30,15 +32,19 @@ const docClient = DynamoDBDocumentClient.from(client);
  * Telegram attaches many media types that have no file behind them
  * (polls, geo, dice, games, ...). downloadMedia() throws on those, so we
  * only hand it the classes it actually knows how to fetch. */
-function isDownloadable(media) {
+function isDownloadable(media: Api.TypeMessageMedia | undefined): boolean {
     if (!media) {
         return false;
     }
 
     if (media.className === "MessageMediaWebPage") {
         const webpage = media.webpage;
-        return Boolean(webpage && (webpage.document || webpage.photo));
+        return webpage.className === "WebPage" && Boolean(webpage.document || webpage.photo);
     }
+
+    /* Widened to a plain string: the list also names classes that are not
+     * message media (WebDocument, ...), which a literal union would reject. */
+    const className: string = media.className;
 
     return [
         "MessageMediaPhoto",
@@ -46,11 +52,11 @@ function isDownloadable(media) {
         "MessageMediaContact",
         "WebDocument",
         "WebDocumentNoProxy"
-    ].includes(media.className);
+    ].includes(className);
 }
 
 
-function getTypeAndMimeType(message) {
+function getTypeAndMimeType(message: Api.Message): [string, string] {
     if (message.photo) {
         return ["photo", "image/jpeg"];
     }
@@ -71,8 +77,8 @@ function getTypeAndMimeType(message) {
 }
 
 
-function getExtension(mimeType) {
-    const map = {
+function getExtension(mimeType: string): string {
+    const map: Record<string, string> = {
         "image/jpeg": "jpg",
         "image/png": "png",
         "video/mp4": "mp4",
@@ -84,7 +90,7 @@ function getExtension(mimeType) {
     return map[mimeType] || "bin";
 }
 
-async function backupMessage(client, message) {
+async function backupMessage(client: TelegramClient, message: Api.Message): Promise<void> {
     const id = Number(message.id);
 
     console.log(`Processing message ${id}`);
@@ -101,14 +107,14 @@ async function backupMessage(client, message) {
 
     const metadata = {id, date, text};
 
-    let savedKey
+    let savedKey: string | undefined
     if (message.media) {
         if (!isDownloadable(message.media)) {
             console.log(`  skipping non-downloadable media: ${message.media.className}`);
             return;
         }
         try {
-            const size = Number(message.file.size)
+            const size = Number(message.file?.size ?? 0)
             console.log(`  downloading media ${id} of size ${prettyBytes(size)} ...`);
             const buffer = await client.downloadMedia(message, {});
             if (buffer) {
@@ -119,7 +125,7 @@ async function backupMessage(client, message) {
                 console.log(`  media '${savedKey}' uploaded`);
             }
         } catch (error) {
-            console.error(`  media download failed for ${id}`, error.message);
+            console.error(`  media download failed for ${id}`, error instanceof Error ? error.message : error);
             throw error;
         }
     }
@@ -132,9 +138,9 @@ async function backupMessage(client, message) {
     const command = new PutCommand({
         TableName: tableName,
         Item: {
-            channelId: channel,
+            channelId: channelId,
             messageId: id,
-            groupedId: message.groupedId ? BigInt(message.groupedId) : null,
+            groupedId: message.groupedId ? BigInt(message.groupedId.toString()) : null,
             date: date.toISOString(),
             text: text,
             media: savedKey
@@ -145,11 +151,11 @@ async function backupMessage(client, message) {
     console.log(`  message ${id} was written to DB`);
 }
 
-export async function main() {
+export async function main(): Promise<void> {
     const client = await createTelegramClient();
 
     try {
-        console.log(`Channel: ${channel}`);
+        console.log(`Channel: ${channelId}`);
         const state = await loadState();
         const lastMessageId = Number(state.lastMessageId || 0);
         console.log(`Last backed up message: ${lastMessageId}`);
@@ -165,12 +171,12 @@ export async function main() {
         for await (
             const message
             of client.iterMessages(
-            channel,
+            new Api.PeerChannel({channelId: bigInt(channelId)}),
             {
                 minId: lastMessageId,
                 reverse: true
             }
-        )
+        ) as AsyncIterable<Api.Message>
             ) {
             if (++i > batchSize) break;
 
@@ -190,7 +196,7 @@ export async function main() {
 
 /*
  * Only self-run when invoked directly (npm run backup).
- * Under Lambda this module is imported by src/lambda.js, which owns
+ * Under Lambda this module is imported by src/lambda.ts, which owns
  * error handling: process.exit() there would kill the container and
  * hide the failure from retries and the DLQ. */
 if (import.meta.filename === process.argv[1]) {

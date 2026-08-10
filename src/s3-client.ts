@@ -1,20 +1,27 @@
 import "dotenv/config";
 
 import {S3Client} from "@aws-sdk/client-s3";
-import {requireNonNull} from "./util.js";
-import {fetchParameter} from "./parameterStore.js";
+import {requireNonNull} from "./util.ts";
+import {fetchParameter} from "./parameterStore.ts";
 
 export const bucket = String(requireNonNull(process.env.S3_BUCKET, 's3 bucket'));
 export const prefix = process.env.S3_PREFIX || requireNonNull(process.env.TELEGRAM_CHANNEL, 'telegram channel');
 
 const parameterName = process.env.S3_PARAMETER_NAME;
 
-let cachedCredentials; // module scope: survives warm Lambda invocations
+interface S3Credentials {
+    s3Endpoint: string | undefined;
+    accessKeyId: string;
+    secretAccessKey: string;
+    region: string;
+}
 
-async function loadCredentials() {
+let cachedCredentials: S3Credentials | undefined; // module scope: survives warm Lambda invocations
+
+async function loadCredentials(): Promise<S3Credentials> {
     if (cachedCredentials) return cachedCredentials;
 
-    const credentials = parameterName
+    const credentials: Record<string, string | undefined> = parameterName
         ? await fetchParameter(parameterName)
         : {
             s3Endpoint: process.env.S3_ENDPOINT,

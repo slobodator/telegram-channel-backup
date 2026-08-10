@@ -2,8 +2,7 @@ import "dotenv/config";
 import fs from "node:fs/promises";
 import input from "input";
 import {TelegramClient} from "teleproto";
-import {requireNonNull} from "./util.js";
-// noinspection JSFileReferences
+import {requireNonNull} from "./util.ts";
 import {StringSession} from "teleproto/sessions/index.js";
 
 const apiId = Number(requireNonNull(process.env.TELEGRAM_API_ID, 'telegram apiId'));
@@ -11,7 +10,7 @@ const apiHash = String(requireNonNull(process.env.TELEGRAM_API_HASH, 'telegram a
 
 const SESSION_FILE = ".telegram-session";
 
-async function main() {
+async function main(): Promise<void> {
     let session = "";
 
     try {
@@ -41,12 +40,12 @@ async function main() {
         phoneCode: async () =>
             input.text("Telegram login code: "),
 
-        onError: (err) => {
+        onError: (err: Error) => {
             console.error(err);
         }
     });
 
-    const savedSession = client.session.save();
+    const savedSession = stringSession.save();
 
     await fs.writeFile(
         SESSION_FILE,
