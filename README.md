@@ -34,7 +34,7 @@ package carries no `node_modules` and no sources. The Lambda handler is
 
 ## Local dev
 
-- [obtain](https://core.telegram.org/api/obtaining_api_id#obtaining-api-id) your telegram app `apiId` and `api_hash
+- [obtain](https://core.telegram.org/api/obtaining_api_id#obtaining-api-id) your telegram app `apiId` and `api_hash`
 - run local S3
 
 ```shell
@@ -90,7 +90,7 @@ DYNAMO_DB_ENDPOINT=http://localhost:8000
 
 ### Parameter Store
 
-#### `telegramCredentials`
+#### `telegramCredentials` (mandatory)
 
 ```json
 {
@@ -100,7 +100,7 @@ DYNAMO_DB_ENDPOINT=http://localhost:8000
 }
 ```
 
-#### `s3Credentials`
+#### `s3Credentials` (optional, if using external S3 storage)
 
 ```json
 {
@@ -117,7 +117,6 @@ DYNAMO_DB_ENDPOINT=http://localhost:8000
 
 - `TELEGRAM_CHANNEL` -- starting with `-100`
 - `TELEGRAM_PARAMETER_NAME` = `telegramCredentials`
-- `S3_PARAMETER_NAME` = `s3Credentials`
 - `S3_BUCKET` -- bucket name
 - `S3_PREFIX` -- root directory
 - `DYNAMO_DB_TABLE_NAME` = `telegram-messages`
@@ -125,6 +124,7 @@ DYNAMO_DB_ENDPOINT=http://localhost:8000
 #### optional
 
 - `BATCH_SIZE` = 10
+- `S3_PARAMETER_NAME` = `s3Credentials` (if using external S3 storage)
 
 ### Miscellaneous
 
