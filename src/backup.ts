@@ -91,7 +91,7 @@ function getExtension(mimeType: string): string {
 }
 
 async function backupMessage(client: TelegramClient, message: Api.Message): Promise<void> {
-    const id = Number(message.id);
+    const id = message.id;
 
     console.log(`Processing message ${id}`);
 
@@ -157,7 +157,7 @@ export async function main(): Promise<void> {
     try {
         console.log(`ChannelId: ${channelId}`);
         const state = await loadState();
-        const lastMessageId = Number(state.lastMessageId || 0);
+        const lastMessageId = state.lastMessageId || 0;
         console.log(`Last backed up message: ${lastMessageId}`);
 
         /*
@@ -166,23 +166,20 @@ export async function main(): Promise<void> {
          * We use minId so we only process messages newer than our checkpoint. */
 
         let maxProcessedId = lastMessageId;
-        let i = 0
-
-        for await (
-            const message
-            of client.iterMessages(
+        const messages = client.iterMessages(
             new Api.PeerChannel({channelId: bigInt(channelId)}),
             {
                 minId: lastMessageId,
                 reverse: true
             }
-        ) as AsyncIterable<Api.Message>
-            ) {
-            if (++i > batchSize) break;
+        );
+        let counter = 0
+        for await (const message of messages) {
+            if (++counter > batchSize) break;
 
             await backupMessage(client, message);
 
-            const id = Number(message.id);
+            const id = message.id;
             if (id > maxProcessedId) maxProcessedId = id;
             await saveState(maxProcessedId);
         }
