@@ -5,7 +5,7 @@ import {requireNonNull} from "./util.ts";
 import {fetchParameter} from "./parameterStore.ts";
 
 export const bucket = String(requireNonNull(process.env.S3_BUCKET, 's3 bucket'));
-export const prefix = process.env.S3_PREFIX || requireNonNull(process.env.TELEGRAM_CHANNEL, 'telegram channel');
+export const prefix = process.env.S3_PREFIX || requireNonNull(process.env.TELEGRAM_CHANNEL_ID, 'telegram channel');
 
 const parameterName = process.env.S3_PARAMETER_NAME;
 

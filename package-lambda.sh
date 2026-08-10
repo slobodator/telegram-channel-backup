@@ -172,7 +172,7 @@ Create the function (first deployment):
     --role arn:aws:iam::<account-id>:role/<execution-role> \\
     --timeout 900 \\
     --memory-size 1024 \\
-    --environment 'Variables={TELEGRAM_CHANNEL=<channel>,TELEGRAM_PARAMETER_NAME=<ssm-parameter>,S3_BUCKET=<bucket>,S3_PREFIX=<prefix>}' \\
+    --environment 'Variables={TELEGRAM_CHANNEL_ID=<channel-id>,TELEGRAM_PARAMETER_NAME=<ssm-parameter>,S3_BUCKET=<bucket>,S3_PREFIX=<prefix>}' \\
     --zip-file fileb://${ARTIFACT}
 
 Update an existing function:

@@ -9,7 +9,7 @@ import {requireNonNull} from "./util.ts";
 import prettyBytes from "pretty-bytes"
 import bigInt from "big-integer";
 
-const channelId = BigInt(requireNonNull(process.env.TELEGRAM_CHANNEL, 'telegram channelId'));
+const channelId = BigInt(requireNonNull(process.env.TELEGRAM_CHANNEL_ID, 'telegram channelId'));
 const batchSize = Number(process.env.BATCH_SIZE || 10);
 
 const region = String(requireNonNull(process.env.AWS_REGION, 'AWS region'));
@@ -155,7 +155,7 @@ export async function main(): Promise<void> {
     const client = await createTelegramClient();
 
     try {
-        console.log(`Channel: ${channelId}`);
+        console.log(`ChannelId: ${channelId}`);
         const state = await loadState();
         const lastMessageId = Number(state.lastMessageId || 0);
         console.log(`Last backed up message: ${lastMessageId}`);

@@ -115,7 +115,7 @@ DYNAMO_DB_ENDPOINT=http://localhost:8000
 
 #### mandatory
 
-- `TELEGRAM_CHANNEL` -- starting with `-100`
+- `TELEGRAM_CHANNEL_ID` -- starting with `-100`
 - `TELEGRAM_PARAMETER_NAME` = `telegramCredentials`
 - `S3_BUCKET` -- bucket name
 - `S3_PREFIX` -- root directory
