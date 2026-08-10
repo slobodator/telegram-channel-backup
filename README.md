@@ -101,3 +101,16 @@ DYNAMO_DB_ENDPOINT=http://localhost:8000
 #### optional
 
 - `BATCH_SIZE` = 10
+
+### Miscellaneous
+
+Query to get the last message processed
+
+```shell
+aws dynamodb query \
+    --table-name telegram-messages \
+    --key-condition-expression "channelId = :channelId" \
+    --expression-attribute-values '{":channelId": {"N": "<put telegram channelId here>"}}' \
+    --no-scan-index-forward \
+    --limit 1
+```
