@@ -170,13 +170,11 @@ export async function main(): Promise<void> {
             new Api.PeerChannel({channelId: bigInt(channelId)}),
             {
                 minId: lastMessageId,
+                limit: batchSize,
                 reverse: true
             }
         );
-        let counter = 0
         for await (const message of messages) {
-            if (++counter > batchSize) break;
-
             await backupMessage(client, message);
 
             const id = message.id;
